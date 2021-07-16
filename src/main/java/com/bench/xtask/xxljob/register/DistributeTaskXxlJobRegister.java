@@ -4,6 +4,7 @@ import com.bench.common.enums.error.CommonErrorCodeEnum;
 import com.bench.common.exception.BenchRuntimeException;
 import com.bench.common.exception.CommonErrorEnum;
 import com.bench.lang.base.annotation.utils.AnnotationUtils;
+import com.bench.lang.base.bool.utils.BooleanUtils;
 import com.bench.lang.base.clasz.method.utils.MethodUtils;
 import com.bench.lang.base.instance.BenchInstanceFactory;
 import com.bench.lang.base.object.utils.ObjectUtils;
@@ -27,6 +28,7 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 
 /**
  * @className DistributeTaskXxlJobRegister
@@ -44,10 +46,15 @@ public class DistributeTaskXxlJobRegister implements DistributeTaskRegister {
 
 		// 对组/执行器进行初始化 有则返回，无则创建
 		initXxlJobGroup();
-
-		// 对组/执行器进行注册，让其生效
-		registerJobGroup();
-
+		Map<String, String> envMap = System.getenv();
+		boolean taskEnabled = true;
+		if(StringUtils.isNotEmpty(envMap.get("TASK_ENABLED"))){
+			taskEnabled = BooleanUtils.toBoolean(envMap.get("TASK_ENABLED"));
+		}
+		if(taskEnabled) {
+			// 对组/执行器进行注册，让其生效
+			registerJobGroup();
+		}
 		// 对所有task进行注册
 		for (BenchDistributeTask task : tasks) {
 			// 初始化task
@@ -114,6 +121,7 @@ public class DistributeTaskXxlJobRegister implements DistributeTaskRegister {
 		xxlJobTaskInfoRequest.setJobDesc(xxlJobProperties.getAppCode() + "-" + task.getTaskName());
 		if (!StringUtils.isEmpty(annotationTask.cronExpression())) {
 			xxlJobTaskInfoRequest.setScheduleType(ScheduleTypeEnum.CRON.name());
+			xxlJobTaskInfoRequest.setScheduleConf(annotationTask.cronExpression());
 		} else if (annotationTask.repeatIntervalMillseconds() > 0) {
 			xxlJobTaskInfoRequest.setScheduleType(ScheduleTypeEnum.FIX_RATE.name());
 			//毫秒为单位转化为秒
@@ -128,7 +136,7 @@ public class DistributeTaskXxlJobRegister implements DistributeTaskRegister {
 		ReturnT returnT = XxlJobRemotingUtil.postBody(url, "", xxlJobProperties.getTimeOut(), xxlJobTaskInfoRequest, String.class);
 		if (returnT.getCode() != 200) {
 			// 注册失败直接抛异常
-			throw new BenchRuntimeException(CommonErrorEnum.SYSTEM_ERROR.errorCode(), "分布式task=" + task + "异常,注册xxlJobInfo时失败");
+			throw new BenchRuntimeException(CommonErrorEnum.SYSTEM_ERROR.errorCode(), "分布式task=" + task + "异常,注册xxlJobInfo时失败 returnT="+returnT);
 
 		}
 	}
