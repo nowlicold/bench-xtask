@@ -28,6 +28,10 @@ public class DistributeTaskComponent implements ApplicationRunner {
 	 * 注册分布式task
 	 */
 	public void registered() {
+		//如果为空则不注册
+		if(tasks == null){
+			return;
+		}
 		distributeTaskRegister.registered(tasks);
 
 	}
