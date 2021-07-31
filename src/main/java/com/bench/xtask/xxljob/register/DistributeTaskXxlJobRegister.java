@@ -8,6 +8,7 @@ import com.bench.lang.base.bool.utils.BooleanUtils;
 import com.bench.lang.base.clasz.method.utils.MethodUtils;
 import com.bench.lang.base.instance.BenchInstanceFactory;
 import com.bench.lang.base.object.utils.ObjectUtils;
+import com.bench.lang.base.properties.utils.PropertiesUtils;
 import com.bench.lang.base.string.utils.StringUtils;
 import com.bench.xtask.BenchDistributeTask;
 import com.bench.xtask.DistributeTaskExecuter;
@@ -47,6 +48,7 @@ public class DistributeTaskXxlJobRegister implements DistributeTaskRegister {
 		// 对组/执行器进行初始化 有则返回，无则创建
 		initXxlJobGroup();
 		Map<String, String> envMap = System.getenv();
+		log.error("加载系统变量{}",PropertiesUtils.convert2String(envMap,false));
 		boolean taskEnabled = true;
 		if(StringUtils.isNotEmpty(envMap.get("TASK_ENABLED"))){
 			taskEnabled = BooleanUtils.toBoolean(envMap.get("TASK_ENABLED"));
@@ -143,7 +145,7 @@ public class DistributeTaskXxlJobRegister implements DistributeTaskRegister {
 
 	private void registerTask(BenchDistributeTask task) {
 		// 创建执行器
-		DistributeTaskExecuter distributeTaskExecuter = BenchInstanceFactory.getInstance(DistributeTaskExecuter.class);
+		DistributeTaskExecuter distributeTaskExecuter = new DistributeTaskExecuter();
 		XxlJobDistributeSchedulerWrapper<DistributeTaskExecuter> wrapper = new XxlJobDistributeSchedulerWrapper<DistributeTaskExecuter>(task, distributeTaskExecuter);
 
 		Method executeMethod = MethodUtils.getMethod(wrapper.getClass(), "execute", new Class[] { String.class });
@@ -157,8 +159,5 @@ public class DistributeTaskXxlJobRegister implements DistributeTaskRegister {
 
 	}
 
-	public static void main(String[] args) {
-		System.out.println("test");
-	}
 
 }

@@ -21,7 +21,7 @@ public class DistributeTaskComponent implements ApplicationRunner {
 	private DistributeTaskRegister distributeTaskRegister;
 
 	//所有实现task的类集合
-	@Autowired
+	@Autowired(required = false)
 	private List<BenchDistributeTask> tasks;
 
 	/**
