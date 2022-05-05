@@ -26,10 +26,14 @@ import com.xxl.job.core.util.XxlJobRemotingUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.concurrent.ListenableFutureTask;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.FutureTask;
 
 /**
  * @className DistributeTaskXxlJobRegister
@@ -41,7 +45,8 @@ import java.util.Map;
 public class DistributeTaskXxlJobRegister implements DistributeTaskRegister {
 	@Autowired
 	private XxlJobProperties xxlJobProperties;
-
+	@Autowired
+	private Executor registeredXxlJobTaskExecutor;
 	@Override
 	public void registered(List<BenchDistributeTask> tasks) {
 
@@ -58,12 +63,29 @@ public class DistributeTaskXxlJobRegister implements DistributeTaskRegister {
 			registerJobGroup();
 		}
 		// 对所有task进行注册
+		List<FutureTask<BenchDistributeTask>> futureTaskList = new ArrayList<>();
 		for (BenchDistributeTask task : tasks) {
-			// 初始化task
-			initTask(task);
-			// 注册task
-			registerTask(task);
+			FutureTask<BenchDistributeTask> futureTask = new FutureTask(()->{
+				// 初始化task
+				initTask(task);
+				// 注册task
+				registerTask(task);
+				return task;
+			});
+			registeredXxlJobTaskExecutor.execute(futureTask);
+			futureTaskList.add(futureTask);
+
 		}
+		futureTaskList.stream().forEach( futureTask ->{
+			BenchDistributeTask task = null;
+			try {
+				 task = futureTask.get();
+			} catch (Exception e) {
+				log.error("多线程执行注册xxlJob异常,taskName={},taskClass={}", task.getTaskName(), task.getClass(), e);
+				throw new BenchRuntimeException(CommonErrorEnum.SYSTEM_ERROR, "多线程执行注册xxlJob异常,taskName={}=" + task.getTaskName());
+
+			}
+		});
 
 	}
 
