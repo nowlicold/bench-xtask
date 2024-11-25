@@ -25,10 +25,9 @@ import com.xxl.job.core.util.XxlJobRemotingUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
+import org.springframework.context.ApplicationContext;
 import org.springframework.stereotype.Component;
-import org.springframework.web.context.WebApplicationContext;
 
-import javax.annotation.Resource;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,13 +48,10 @@ public class DistributeTaskXxlJobRegister implements DistributeTaskRegister {
     @Autowired
     private Executor registeredXxlJobTaskExecutor;
     @Autowired
-    private WebApplicationContext applicationContext;
+    private ApplicationContext applicationContext;
 
     @Override
     public void registered(List<BenchDistributeTask> tasks) {
-
-        // 对组/执行器进行初始化 有则返回，无则创建
-        initXxlJobGroup();
         Map<String, String> envMap = System.getenv();
         log.debug("加载系统变量{}", PropertiesUtils.convert2String(envMap, false));
         boolean taskEnabled = true;
@@ -63,36 +59,39 @@ public class DistributeTaskXxlJobRegister implements DistributeTaskRegister {
             taskEnabled = BooleanUtils.toBoolean(envMap.get("TASK_ENABLED"));
         }
         if (taskEnabled) {
+            // 对组/执行器进行初始化 有则返回，无则创建
+            initXxlJobGroup();
+
             // 对组/执行器进行注册，让其生效
             registerJobGroup();
-        }
-        // 对所有task进行注册
-        List<FutureTask<BenchDistributeTask>> futureTaskList = new ArrayList<>();
-        for (BenchDistributeTask task : tasks) {
-            FutureTask<BenchDistributeTask> futureTask = new FutureTask<>(() -> {
-                // 初始化task
-                initTask(task);
-                // 注册task
-                registerTask(task);
-                return task;
-            });
-            registeredXxlJobTaskExecutor.execute(futureTask);
-            futureTaskList.add(futureTask);
 
-        }
-
-        futureTaskList.forEach(futureTask -> {
-            BenchDistributeTask task = null;
-            try {
-				// 阻塞等待。相当于barrier
-                task = futureTask.get();
-            } catch (Exception e) {
-                log.error("多线程执行注册xxlJob异常,taskName={},taskClass={}", task.getTaskName(), task.getClass(), e);
-                throw new BenchRuntimeException(CommonErrorEnum.SYSTEM_ERROR, "多线程执行注册xxlJob异常,taskName={}=" + task.getTaskName());
+            // 对所有task进行注册
+            List<FutureTask<BenchDistributeTask>> futureTaskList = new ArrayList<>();
+            for (BenchDistributeTask task : tasks) {
+                FutureTask<BenchDistributeTask> futureTask = new FutureTask<>(() -> {
+                    // 初始化task
+                    initTask(task);
+                    // 注册task
+                    registerTask(task);
+                    return task;
+                });
+                registeredXxlJobTaskExecutor.execute(futureTask);
+                futureTaskList.add(futureTask);
 
             }
-        });
 
+            futureTaskList.forEach(futureTask -> {
+                BenchDistributeTask task = null;
+                try {
+                    // 阻塞等待。相当于barrier
+                    task = futureTask.get();
+                } catch (Exception e) {
+                    log.error("多线程执行注册xxlJob异常,taskName={},taskClass={}", task.getTaskName(), task.getClass(), e);
+                    throw new BenchRuntimeException(CommonErrorEnum.SYSTEM_ERROR, "多线程执行注册xxlJob异常,taskName={}=" + task.getTaskName());
+
+                }
+            });
+        }
     }
 
     /**

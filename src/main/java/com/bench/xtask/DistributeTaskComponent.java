@@ -1,5 +1,6 @@
 package com.bench.xtask;
 
+import com.bench.lang.base.list.utils.ListUtils;
 import com.bench.xtask.register.DistributeTaskRegister;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,27 +18,27 @@ import java.util.List;
 @Component
 @Slf4j
 public class DistributeTaskComponent implements ApplicationRunner {
-	@Autowired
-	private DistributeTaskRegister distributeTaskRegister;
+    @Autowired
+    private DistributeTaskRegister distributeTaskRegister;
 
-	//所有实现task的类集合
-	@Autowired(required = false)
-	private List<BenchDistributeTask> tasks;
+    //所有实现task的类集合
+    @Autowired(required = false)
+    private List<BenchDistributeTask> tasks;
 
-	/**
-	 * 注册分布式task
-	 */
-	public void registered() {
-		//如果为空则不注册
-		if(tasks == null){
-			return;
-		}
-		distributeTaskRegister.registered(tasks);
+    /**
+     * 注册分布式task
+     */
+    public void registered() {
+        //如果为空则不注册
+        if (ListUtils.isEmpty(tasks)) {
+            return;
+        }
+        distributeTaskRegister.registered(tasks);
 
-	}
+    }
 
-	@Override
-	public void run(ApplicationArguments args) throws Exception {
-		registered();
-	}
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+        registered();
+    }
 }
